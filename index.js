@@ -2,19 +2,14 @@ class DynamicDom {
   // fiber
   currentFiberList = [];
   nextFiberList = [];
+
   // store
-  state = {
-    todos: [],
-    test: "양호"
-  };
+  state;
+  reducer;
   listeners = [];
-  
 
-  ADD_TODO = "ADD_TODO";
-  DELETE_TODO = "DELETE_TODO";
-
-  constructor(store) {
-    this.state = store
+  constructor(reducer) {
+    this.reducer = reducer
   }
 
   getState() {
@@ -25,9 +20,9 @@ class DynamicDom {
     this.state = payload;
   }
 
-  dispatch(action) {
+  dispatch(action, listeners = null) {
     this.setState(this.reducer(this.state, action));
-    this.publish();
+    this.publish(listeners);
   }
 
   publish(listeners) {
@@ -46,63 +41,6 @@ class DynamicDom {
     this.listeners.push({
       subscriber
     })
-  }
-
-  reducer(state = this.state, { type, payload }) {
-    switch (type) {
-      case "ADD_TODO":
-      return Object.assign({}, state, {
-        todos: [
-          ...state.todos, 
-          {
-            id: payload.id,
-            title: payload.title,
-            state: ""
-          }
-        ]
-      });
-
-    case "DELETE_TODO": 
-      console.log(state, payload.id);
-      return Object.assign({}, state, {
-        todos: state.todos.filter(todo => 
-          String(todo.id) !== String(payload.id)
-        )
-      });
-
-    case "TOGGLE_TODO_STATE":
-      return Object.assign({}, state, {
-        todos: state.todos.map( todo => {
-          todo.id === payload.id ? {
-            ...todo,
-            state: "completed"?  "" : "completed"
-          } : todo
-        })
-      });
-
-    case "UPDATE_TODO_TITEL": 
-      return Object.assign({}, state, {
-        todos: state.todos.map( todo => {
-          todo.id === payload.id ? {
-            ...todo,
-            title: payload.title
-          } : todo 
-        })
-      });
-
-    case "EDITE_TODO_STATE":
-      return Object.assign({}, state, {
-        todos: state.todos.map( todo => {
-          todo.id === payload.id ? {
-            ...todo,
-            state: "edited"? "" : "edited"
-          } : todo
-        })
-      });
-
-    default :
-      return state
-    }
   }
 
   static createElement(type, props, ...children) {
@@ -129,123 +67,11 @@ class DynamicDom {
     }
   }
 
-  childCreateDom(element, parentFiber, key) {
-    const preFiber = parentFiber.children.filter(child => Number(child.key) === Number(key))[0];
-
-    console.log(preFiber, key, parentFiber)
-
-    if(preFiber) {
-      
-      this.updateDomProps(preFiber.element.props, element.props, preFiber.dom);
-
-      const keyList = element.children.map((ele, idx) => idx);
-  
-      const removeList = preFiber.children.filter(fiber => !keyList.includes(fiber.key));
-      if(removeList) {
-        console.log(keyList, removeList, "removeList")
-        removeList.forEach(child => {
-          preFiber.dom.removeChild(child.dom);
-        })
-      }
-      
-      const children = [...element.children.map((child, idx) =>
-        this.childCreateDom(child, preFiber, idx)
-      )];
-
-      return {
-        dom: preFiber.dom,
-        element: {
-          type: element.type,
-          props: element.props
-        },
-        key: preFiber.key,
-        children
-      }
-
-    } else {
-      console.log("실행됨")
-      const dom = element.type == "TEXT_ELEMENT"
+  createFiber(element, key = 1) {
+    const dom = element.type == "TEXT_ELEMENT" 
         ? document.createTextNode("")
         : document.createElement(element.type);
 
-      const isEvent = key => 
-        key.startsWith("on");
-      const isKey = key => 
-        key === "key";
-      const isProperty = key => 
-        key !== "children" && !isEvent(key) && !isKey(key);
-
-
-      Object.keys(element.props)
-        .filter(isProperty)
-        .forEach(name => {
-          dom[name] = element.props[name]
-        });
-      
-      Object.keys(element.props)
-        .filter(isEvent)
-        .forEach(name => {
-          const eventType = name.toLowerCase().substring(2);
-          dom.addEventListener(eventType,element.props[name]);
-        });
-
-      const fiber = {
-        dom,
-        element: {
-          type: element.type,
-          props: element.props
-        },
-        key: Number(key),
-        children: []
-      }
-
-      fiber.children =[...element.children.map((child, idx) =>
-        this.childCreateDom(child, fiber, idx)
-      )];
-
-        parentFiber.dom.appendChild(dom);
-        return fiber
-      }
-
-  }
-
-  createDom(element, key = 1) {
-    const preFiber = this.currentFiberList.filter(fiber => fiber.key === key)[0]
-  
-    if(preFiber) {
-      console.log(preFiber)
-
-      this.updateDomProps(preFiber.element.props, element.props, preFiber.dom);
-
-      const keyList = element.children.map((ele, idx) => idx);
-  
-      const removeList = preFiber.children.filter(fiber => !keyList.includes(Number(fiber.key)));
-
-      console.log(keyList,removeList, "removeList")
-      removeList.forEach(child => {
-        preFiber.dom.removeChild(child.dom);
-      })
-
-      
-      const children = [...element.children.map((child, idx) =>
-        this.childCreateDom(child, preFiber, idx)
-      )]
-
-      return {
-        dom: preFiber.dom,
-        element: {
-          type: element.type,
-          props: element.props
-        },
-        key: preFiber.key,
-        children
-      }
-
-    } else {
-      const dom = element.type == "TEXT_ELEMENT" 
-        ? document.createTextNode("")
-        : document.createElement(element.type);
-    
       const isEvent = key => 
         key.startsWith("on");
       const isKey = key => 
@@ -278,10 +104,6 @@ class DynamicDom {
         key: Number(key),
         children: []
       }
-
-      fiber.children =[...element.children.map((child, key) => 
-        this.childCreateDom(child, fiber, key)
-      )];
     
       if(element.props.dataset) {
         Object.keys(element.props.dataset)
@@ -291,48 +113,6 @@ class DynamicDom {
       }
 
       return fiber;
-    }
-  }
-
-  addDomList(ele, key) {
-    const fiber = this.createDom(ele, key);
-    this.nextFiberList.push(fiber);
-  }
-
-  allDomRender(container) {
-
-    const keyList = this.nextFiberList.map(fiber => fiber.key);
-    
-    const removeList = this.currentFiberList.filter(fiber => !keyList.includes(fiber.key));
-    console.log(keyList, removeList, this.nextFiberList);
-    removeList.forEach(fiber => {
-      container.removeChild(fiber.dom);
-    });
-
-    this.nextFiberList.forEach((nextFiber, idx)=>{
-      const preFiber = this.currentFiberList.filter(fiber =>
-          fiber.key === nextFiber.key
-        )[0]
-      if(!preFiber) {
-        container.appendChild(nextFiber.dom)
-      }
-      nextFiber.key = idx
-    });
-
-    this.currentFiberList = [...this.nextFiberList];
-    this.nextFiberList = [];
-  }
-
-  findDom(key) {    
-    return this.currentFiberList.filter(fiber =>
-        fiber.key === Number(key) 
-      )[0].dom
-  }
-  
-  findElement(key) {
-    return this.currentFiberList.filter(fiber =>
-        fiber.key === Number(key)
-      )[0].element
   }
 
   updateDomProps(prevProps, nextProps, dom) {
@@ -341,6 +121,7 @@ class DynamicDom {
     const isNew = (prev, next) => key => prev[key] !== next[key];
     const isGone = (prev, next) => key => !(key in next);
 
+    // Remove old Events
     Object.keys(prevProps)
       .filter(isEvent)
       .filter(key => !(key in nextProps) || isNew(prevProps, nextProps)(key))
@@ -374,6 +155,90 @@ class DynamicDom {
         dom.addEventListener(eventType, nextProps[name]);
       });
 
+  }
+
+  removeDomList(keyList, fiberList, dom) {
+    const removeList = fiberList.filter(fiber => 
+      !keyList.includes(Number(fiber.key)));
+
+    removeList.forEach(child => {
+      dom.removeChild(child.dom);
+    });
+  }
+
+  setFiber(element, key = 1, fiberList) {
+    const preFiber = Array.isArray(fiberList)
+      ? fiberList.filter(fiber => fiber.key === key)[0]
+      : fiberList.children.filter(fiber => fiber.key === key)[0]
+
+  
+    if(preFiber) {
+
+      this.updateDomProps(preFiber.element.props, element.props, preFiber.dom);
+
+      const keyList = element.children.map((ele, idx) => idx);
+
+      this.removeDomList(keyList, preFiber.children, preFiber.dom);
+      
+      const children = [...element.children.map((child, idx) =>
+        this.setFiber(child, idx, preFiber)
+      )]
+
+      return {
+        dom: preFiber.dom,
+        element: {
+          type: element.type,
+          props: element.props
+        },
+        key: Number(preFiber.key),
+        children
+      }
+
+    } else {      
+
+      const fiber = this.createFiber(element, key)
+
+      fiber.children =[...element.children.map((child, key) => 
+        this.setFiber(child, key, fiber)
+      )];
+
+      if(!Array.isArray(fiberList)) {
+        fiberList.dom.appendChild(fiber.dom);
+      }
+
+      return fiber;
+    }
+  }
+
+  addFiberList(element, key) {
+    const fiber = this.setFiber(element, key, this.currentFiberList);
+    this.nextFiberList.push(fiber);
+  }
+
+  render(container) {
+
+    const keyList = this.nextFiberList.map(fiber => fiber.key);
+
+    this.removeDomList(keyList, this.currentFiberList, container)
+
+    this.nextFiberList.forEach((nextFiber)=>{
+      const preFiber = this.currentFiberList.filter(fiber =>
+          fiber.key === nextFiber.key
+        )[0]
+      if(!preFiber) {
+        container.appendChild(nextFiber.dom)
+      }
+    });
+
+    this.currentFiberList = [...this.nextFiberList];
+
+    this.nextFiberList = [];
+  }
+
+  findFiber(key) {    
+    return this.currentFiberList.filter(fiber =>
+        fiber.key === Number(key) 
+      )[0]
   }
 
 }
