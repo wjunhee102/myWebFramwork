@@ -1,0 +1,32 @@
+{
+  "name": "dynamicdom",
+  "version": "0.0.1",
+  "description": "## App Structure ``` ``` ---",
+  "main": "index.js",
+  "scripts": {
+    "build": "tcs && babel src -d build",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wjunhee102/myWebFramwork.git"
+  },
+  "keywords": [
+    "dynamicdom"
+  ],
+  "author": "junhee",
+  "license": "ISC",
+  "devDependencies": {
+    "@babel/cli": "^7.12.1",
+    "@babel/core": "^7.12.3",
+    "@babel/preset-react": "^7.12.5",
+    "@babel/preset-typescript": "^7.12.7"
+  },
+  "bugs": {
+    "url": "https://github.com/wjunhee102/myWebFramwork/issues"
+  },
+  "homepage": "https://github.com/wjunhee102/myWebFramwork#readme",
+  "dependencies": {
+    "typescript": "^4.1.2"
+  }
+}
