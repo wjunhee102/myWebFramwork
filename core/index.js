@@ -196,7 +196,7 @@ class DynamicDom {
         this.addFiberList(ele, idx);
       })
     } else {
-      this.addFiberList(ele, key = 1);
+      this.addFiberList(element, 1);
     }
 
     const keyList = this.nextFiberList.map(fiber => fiber.key);
